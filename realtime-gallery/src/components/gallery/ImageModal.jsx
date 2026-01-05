@@ -1,5 +1,6 @@
 import { useUIStore } from "../../store/useUIStore";
 import EmojiBar from "../interactions/EmojiBar";
+import CommentBox from "../interactions/CommentBox";
 
 export default function ImageModal() {
   const selectedImage = useUIStore((s) => s.selectedImage);
@@ -24,6 +25,7 @@ export default function ImageModal() {
         />
 
         <EmojiBar imageId={selectedImage.id} />
+        <CommentBox imageId={selectedImage.id} />
       </div>
     </div>
   );

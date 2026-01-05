@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { db } from "../../instantdb/client";
+import { channel } from "../../realtime/channel";
 
 const EMOJIS = ["❤️", "🔥", "😂", "👏"];
 
@@ -7,37 +7,50 @@ export default function EmojiBar({ imageId }) {
   const [reactions, setReactions] = useState([]);
 
   useEffect(() => {
-    if (!imageId) return;
+    const handleMessage = (event) => {
+      if (
+        event.data?.type === "reaction" &&
+        event.data.imageId === imageId
+      ) {
+        setReactions(event.data.reactions);
+      }
+    };
 
-    const unsub = db
-      .collection("reactions")
-      .where("imageId", "==", imageId)
-      .subscribe(setReactions);
+    channel.addEventListener("message", handleMessage);
 
-    return () => unsub();
+    return () => {
+      channel.removeEventListener("message", handleMessage);
+    };
   }, [imageId]);
 
-  const emojiCounts = useMemo(() => {
-    return reactions.reduce((acc, r) => {
-      acc[r.emoji] = (acc[r.emoji] || 0) + 1;
-      return acc;
-    }, {});
-  }, [reactions]);
+  const addReaction = (emoji) => {
+    const updated = [...reactions, { emoji }];
 
-  const addReaction = async (emoji) => {
-    await db.collection("reactions").add({
+    setReactions(updated);
+
+    channel.postMessage({
+      type: "reaction",
       imageId,
-      emoji,
+      emoji,          // ✅ important for feed
+      reactions: updated,
     });
   };
 
+  const emojiCounts = useMemo(() => {
+    const counts = {};
+    reactions.forEach((r) => {
+      counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+    });
+    return counts;
+  }, [reactions]);
+
   return (
-    <div className="flex gap-3 mt-3">
+    <div className="flex gap-3 mt-4">
       {EMOJIS.map((emoji) => (
         <button
           key={emoji}
           onClick={() => addReaction(emoji)}
-          className="px-3 py-1 border rounded hover:bg-gray-100"
+          className="px-3 py-1 border rounded"
         >
           {emoji} {emojiCounts[emoji] || 0}
         </button>
